@@ -1,4 +1,4 @@
 pose_to_tf_publisher
 ====================
 
-ROS package that publishes TF from poses
+Package that publishes tf from poses (geometry_msgs::PoseStamped, geometry_msgs::PoseWithCovarianceStamped, nav_msgs::Odometry)
