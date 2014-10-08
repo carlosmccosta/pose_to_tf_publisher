@@ -23,6 +23,7 @@ PoseToTFPublisher::PoseToTFPublisher() :
 		invert_tf_transform_(false),
 		invert_tf_hierarchy_(false),
 		transform_pose_to_map_frame_id_(true),
+		tf_collector_(ros::Duration(600.0)),
 		number_tfs_published_(0) {
 }
 
