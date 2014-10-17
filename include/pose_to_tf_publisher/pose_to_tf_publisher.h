@@ -13,6 +13,9 @@
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  <includes>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // std includes
 #include <string>
+#include <sstream>
+#include <vector>
+#include <fstream>
 
 // ROS includes
 #include <ros/ros.h>
@@ -55,24 +58,28 @@ class PoseToTFPublisher {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <ros integration functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		virtual void setupConfigurationFromParameterServer(ros::NodeHandlePtr& node_handle, ros::NodeHandlePtr& private_node_handle, std::string configuration_namespace = "");
 		void publishInitialPoseFromParameterServer();
+		void startPublishingTF();
+		bool startPublishingTFFromFile(std::string poses_filename);
+		bool getPoseFromFile(geometry_msgs::Pose& pose_out, double& timestamp_out, std::ifstream& input_stream);
 		void startPublishingTFFromPoseTopics();
 		void stopPublishingTFFromPoseTopics();
-		void publishTFMapToOdomFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time);
-		void publishTFMapToOdomFromPoseStamped(const geometry_msgs::PoseStampedConstPtr& pose);
-		void publishTFMapToOdomFromPoseWithCovarianceStamped(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose);
-		void publishTFMapToOdomFromOdometry(const nav_msgs::OdometryConstPtr& odom);
+
+		void publishTFFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time);
+		void publishTFFromPoseStamped(const geometry_msgs::PoseStampedConstPtr& pose);
+		void publishTFFromPoseWithCovarianceStamped(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose);
+		void publishTFFromOdometry(const nav_msgs::OdometryConstPtr& odom);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </ros integration functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <tf update functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		bool addOdometryDisplacementToTransform(tf2::Transform& transform, const ros::Time& time_of_transform, const ros::Time& target_time);
-		bool publishTFMapToOdom(bool check_pose_timeout = true);
+		bool sendTF(bool check_pose_timeout = true);
 		bool updateTFMessage(tf2::Transform& transform);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </tf update functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <pose to tf functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		void publishTFMapToOdomFromMapToOdomPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
-		void publishTFMapToOdomFromMapToBasePose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
-		bool publishTFMapToOdom(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time = ros::Time::now(), ros::Duration tf_timeout = ros::Duration(0.1), bool check_pose_timeout = true);
+		void publishTFFromMapToOdomPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
+		void publishTFFromMapToBasePose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
+		bool publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time = ros::Time::now(), ros::Duration tf_timeout = ros::Duration(0.1), bool check_pose_timeout = true);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </pose to tf functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
@@ -103,6 +110,9 @@ class PoseToTFPublisher {
 		std::string pose_stamped_topic_;
 		std::string pose_with_covariance_stamped_topic_;
 		std::string odometry_topic_;
+
+		std::string poses_filename_;
+
 		double publish_rate_;
 		double publish_last_pose_tf_timeout_seconds_;
 		ros::Duration tf_lookup_timeout_;
@@ -119,7 +129,7 @@ class PoseToTFPublisher {
 		// state fields
 		laserscan_to_pointcloud::TFCollector tf_collector_;
 		size_t number_tfs_published_;
-		geometry_msgs::TransformStamped transform_stamped_map_to_odom_;
+		geometry_msgs::TransformStamped transform_stamped_;
 
 		// ros communication fields
 		ros::NodeHandlePtr node_handle_;

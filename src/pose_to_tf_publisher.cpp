@@ -46,6 +46,8 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	private_node_handle_->param("pose_stamped_topic", pose_stamped_topic_, std::string(""));
 	private_node_handle_->param("pose_with_covariance_stamped_topic", pose_with_covariance_stamped_topic_, std::string("/initialpose"));
 	private_node_handle_->param("odometry_topic", odometry_topic_, std::string(""));
+	private_node_handle_->param("poses_filename", poses_filename_, std::string(""));
+
 	private_node_handle_->param("map_frame_id", map_frame_id_, std::string("map"));
 	private_node_handle_->param("odom_frame_id", odom_frame_id_, std::string("odom"));
 	private_node_handle_->param("base_link_frame_id", base_link_frame_id_, std::string("base_link"));
@@ -54,15 +56,17 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	private_node_handle_->param("invert_tf_hierarchy", invert_tf_hierarchy_, false);
 	private_node_handle_->param("transform_pose_to_map_frame_id", transform_pose_to_map_frame_id_, true);
 
-	transform_stamped_map_to_odom_.header.frame_id = invert_tf_hierarchy_ ? odom_frame_id_ : map_frame_id_;
-	transform_stamped_map_to_odom_.child_frame_id = invert_tf_hierarchy_ ? map_frame_id_ : odom_frame_id_;
-	transform_stamped_map_to_odom_.transform.translation.x = 0.0;
-	transform_stamped_map_to_odom_.transform.translation.y = 0.0;
-	transform_stamped_map_to_odom_.transform.translation.z = 0.0;
-	transform_stamped_map_to_odom_.transform.rotation.x = 0.0;
-	transform_stamped_map_to_odom_.transform.rotation.y = 0.0;
-	transform_stamped_map_to_odom_.transform.rotation.z = 0.0;
-	transform_stamped_map_to_odom_.transform.rotation.w = 1.0;
+	std::string child_frame = (odom_frame_id_.empty() ? base_link_frame_id_ : odom_frame_id_);
+
+	transform_stamped_.header.frame_id = invert_tf_hierarchy_ ? child_frame : map_frame_id_;
+	transform_stamped_.child_frame_id = invert_tf_hierarchy_ ? map_frame_id_ : child_frame;
+	transform_stamped_.transform.translation.x = 0.0;
+	transform_stamped_.transform.translation.y = 0.0;
+	transform_stamped_.transform.translation.z = 0.0;
+	transform_stamped_.transform.rotation.x = 0.0;
+	transform_stamped_.transform.rotation.y = 0.0;
+	transform_stamped_.transform.rotation.z = 0.0;
+	transform_stamped_.transform.rotation.w = 1.0;
 }
 
 
@@ -79,30 +83,113 @@ void PoseToTFPublisher::publishInitialPoseFromParameterServer() {
 	private_node_handle_->param("initial_yaw", yaw, 0.0);
 
 	if (initial_pose_in_map_to_base) {
-		publishTFMapToOdomFromMapToBasePose(x, y, z, roll, pitch, yaw);
+		publishTFFromMapToBasePose(x, y, z, roll, pitch, yaw);
 	} else {
-		publishTFMapToOdomFromMapToOdomPose(x, y, z, roll, pitch, yaw);
+		publishTFFromMapToOdomPose(x, y, z, roll, pitch, yaw);
 	}
 }
 
 
+void PoseToTFPublisher::startPublishingTF() {
+	if (transform_stamped_.header.frame_id.empty() || transform_stamped_.child_frame_id.empty()) {
+		ROS_ERROR_STREAM("Source and target frames can't be empty [ map_frame_id: " << map_frame_id_ << " | base_link_frame_id: " << base_link_frame_id_ << " ]");
+		return;
+	}
+
+	if (!poses_filename_.empty()) {
+		if (startPublishingTFFromFile(poses_filename_)) {
+			return;
+		} else {
+			ROS_ERROR_STREAM("Invalid poses file: " << poses_filename_);
+		}
+	}
+
+	startPublishingTFFromPoseTopics();
+}
+
+
+bool PoseToTFPublisher::startPublishingTFFromFile(std::string poses_filename) {
+	std::ifstream input_stream(poses_filename.c_str());
+	if (input_stream.is_open()) {
+		geometry_msgs::Pose current_pose;
+		geometry_msgs::Pose next_pose;
+		double current_pose_time;
+		double next_pose_time;
+
+		if (getPoseFromFile(current_pose, current_pose_time, input_stream)) {
+			ROS_INFO_STREAM("Publishing tf [ " << transform_stamped_.header.frame_id << " -> " << transform_stamped_.child_frame_id << " ] from file " << poses_filename);
+
+			ros::Time::waitForValid();
+
+			publishTFFromPose(current_pose, map_frame_id_, ros::Time(current_pose_time));
+
+			while (getPoseFromFile(next_pose, next_pose_time, input_stream)) {
+				double current_time = ros::Time::now().toSec();
+				double delay_for_next_pose_publish = next_pose_time - current_time - 0.005; // give some time to publish tf and send it before its timestamp
+				if (delay_for_next_pose_publish > -3.0) { // discard old tfs
+					if (delay_for_next_pose_publish > 0.0 && ros::Time::now().sec != 0) { ros::Duration(delay_for_next_pose_publish).sleep(); }
+
+					current_pose = next_pose;
+					current_pose_time = next_pose_time;
+					publishTFFromPose(current_pose, map_frame_id_, ros::Time(current_pose_time));
+				} else {
+					ROS_WARN_STREAM("Dropping pose from file [ current time: " << current_time << " | pose time: " << next_pose_time << " ]");
+				}
+			}
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
+bool PoseToTFPublisher::getPoseFromFile(geometry_msgs::Pose& pose_out, double& timestamp_out, std::ifstream& input_stream) {
+	std::string line;
+	while (std::getline(input_stream, line)) {
+		std::stringstream ss(line);
+		double time;
+		if ((ss >> timestamp_out) &&
+			(ss >> pose_out.position.x) &&
+			(ss >> pose_out.position.y) &&
+			(ss >> pose_out.position.z) &&
+			(ss >> pose_out.orientation.x) &&
+			(ss >> pose_out.orientation.y) &&
+			(ss >> pose_out.orientation.z) &&
+			(ss >> pose_out.orientation.w) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 void PoseToTFPublisher::startPublishingTFFromPoseTopics() {
+	publishInitialPoseFromParameterServer();
+	std::stringstream ss;
 	if (!pose_stamped_topic_.empty()) {
-		pose_stamped_subscriber_ = node_handle_->subscribe(pose_stamped_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFMapToOdomFromPoseStamped, this);
+		ss << " " << pose_stamped_topic_;
+		pose_stamped_subscriber_ = node_handle_->subscribe(pose_stamped_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFFromPoseStamped, this);
 	}
 
 	if (!pose_with_covariance_stamped_topic_.empty()) {
+		ss << " " << pose_with_covariance_stamped_topic_;
 		pose_with_covariance_stamped_subscriber_ = node_handle_->subscribe(pose_with_covariance_stamped_topic_, 5,
-				&pose_to_tf_publisher::PoseToTFPublisher::publishTFMapToOdomFromPoseWithCovarianceStamped, this);
+				&pose_to_tf_publisher::PoseToTFPublisher::publishTFFromPoseWithCovarianceStamped, this);
 	}
 
 	if (!odometry_topic_.empty()) {
-		odometry_subscriber_ = node_handle_->subscribe(odometry_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFMapToOdomFromOdometry, this);
+		ss << " " << odometry_topic_;
+		odometry_subscriber_ = node_handle_->subscribe(odometry_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFFromOdometry, this);
 	}
+
+	ROS_INFO_STREAM("Publishing tf [ " << transform_stamped_.header.frame_id << " -> " << transform_stamped_.child_frame_id << " ] from pose topics [" << ss.str() << " ]");
 
 	ros::Rate publish_rate(publish_rate_);
 	while (ros::ok()) {
-		publishTFMapToOdom();
+		sendTF();
 		publish_rate.sleep();
 		ros::spinOnce();
 	}
@@ -124,7 +211,7 @@ void PoseToTFPublisher::stopPublishingTFFromPoseTopics() {
 }
 
 
-void PoseToTFPublisher::publishTFMapToOdomFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time) {
+void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time) {
 	ros::Time pose_time_updated = pose_time;
 	if (pose_time.sec == 0 && pose_time.nsec == 0) { // time in the future to override any poses coming from the localization node
 		pose_time_updated = ros::Time::now() + ros::Duration(0.25);
@@ -152,23 +239,23 @@ void PoseToTFPublisher::publishTFMapToOdomFromPose(const geometry_msgs::Pose& po
 		transform_pose *= transform_pose_to_map;
 	}
 
-	publishTFMapToOdom(transform_pose, pose_time, tf_lookup_timeout_);
+	publishTF(transform_pose, pose_time, tf_lookup_timeout_);
 	last_pose_time_ = pose_time_updated;
 }
 
 
-void PoseToTFPublisher::publishTFMapToOdomFromPoseStamped(const geometry_msgs::PoseStampedConstPtr& pose) {
-	publishTFMapToOdomFromPose(pose->pose, pose->header.frame_id, pose->header.stamp);
+void PoseToTFPublisher::publishTFFromPoseStamped(const geometry_msgs::PoseStampedConstPtr& pose) {
+	publishTFFromPose(pose->pose, pose->header.frame_id, pose->header.stamp);
 }
 
 
-void PoseToTFPublisher::publishTFMapToOdomFromPoseWithCovarianceStamped(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) {
-	publishTFMapToOdomFromPose(pose->pose.pose, pose->header.frame_id, pose->header.stamp);
+void PoseToTFPublisher::publishTFFromPoseWithCovarianceStamped(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose) {
+	publishTFFromPose(pose->pose.pose, pose->header.frame_id, pose->header.stamp);
 }
 
 
-void PoseToTFPublisher::publishTFMapToOdomFromOdometry(const nav_msgs::OdometryConstPtr& odom) {
-	publishTFMapToOdomFromPose(odom->pose.pose, odom->header.frame_id, odom->header.stamp);
+void PoseToTFPublisher::publishTFFromOdometry(const nav_msgs::OdometryConstPtr& odom) {
+	publishTFFromPose(odom->pose.pose, odom->header.frame_id, odom->header.stamp);
 }
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </ros integration functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -187,18 +274,18 @@ bool PoseToTFPublisher::addOdometryDisplacementToTransform(tf2::Transform& trans
 }
 
 
-bool PoseToTFPublisher::publishTFMapToOdom(bool check_pose_timeout) {
+bool PoseToTFPublisher::sendTF(bool check_pose_timeout) {
 	ros::Time current_time = ros::Time::now();
 	if (!check_pose_timeout || publish_last_pose_tf_timeout_seconds_ <= 0.0 || (current_time - last_pose_time_).toSec() <= publish_last_pose_tf_timeout_seconds_ || last_pose_time_.toSec() < 1.0) {
-		transform_stamped_map_to_odom_.header.seq = number_tfs_published_++;
-		transform_stamped_map_to_odom_.header.stamp = current_time;
-		transform_broadcaster_.sendTransform(transform_stamped_map_to_odom_);
+		transform_stamped_.header.seq = number_tfs_published_++;
+		transform_stamped_.header.stamp = current_time;
+		transform_broadcaster_.sendTransform(transform_stamped_);
 		return true;
 	}
 
 	ROS_WARN_STREAM_THROTTLE(1.0, "Pose to TF publisher reached timeout for last valid pose" \
-			<< "\n\tTF translation -> [ x: " << transform_stamped_map_to_odom_.transform.translation.x << " | y: " << transform_stamped_map_to_odom_.transform.translation.y << " | z: " << transform_stamped_map_to_odom_.transform.translation.z << " ]" \
-			<< "\n\tTF orientation -> [ qx: " << transform_stamped_map_to_odom_.transform.rotation.x << " | qy: " << transform_stamped_map_to_odom_.transform.rotation.y << " | qz: " << transform_stamped_map_to_odom_.transform.rotation.z << " | qw: " << transform_stamped_map_to_odom_.transform.rotation.w << " ]" \
+			<< "\n\tTF translation -> [ x: " << transform_stamped_.transform.translation.x << " | y: " << transform_stamped_.transform.translation.y << " | z: " << transform_stamped_.transform.translation.z << " ]" \
+			<< "\n\tTF orientation -> [ qx: " << transform_stamped_.transform.rotation.x << " | qy: " << transform_stamped_.transform.rotation.y << " | qz: " << transform_stamped_.transform.rotation.z << " | qw: " << transform_stamped_.transform.rotation.w << " ]" \
 			<< "\n\tCurrent time: " << current_time \
 			<< "\n\tLast pose time: " << last_pose_time_);
 	return false;
@@ -219,10 +306,10 @@ bool PoseToTFPublisher::updateTFMessage(tf2::Transform& transform) {
 		}
 
 		transform.getRotation().normalize();
-		laserscan_to_pointcloud::tf_rosmsg_eigen_conversions::transformTF2ToMsg(transform, transform_stamped_map_to_odom_.transform);
-		ROS_DEBUG_STREAM("Updating TF between " << transform_stamped_map_to_odom_.header.frame_id << " and " << transform_stamped_map_to_odom_.child_frame_id \
-				<< "\n\tTF translation -> [ x: " << transform_stamped_map_to_odom_.transform.translation.x << " | y: " << transform_stamped_map_to_odom_.transform.translation.y << " | z: " << transform_stamped_map_to_odom_.transform.translation.z << " ]" \
-				<< "\n\tTF orientation -> [ qx: " << transform_stamped_map_to_odom_.transform.rotation.x << " | qy: " << transform_stamped_map_to_odom_.transform.rotation.y << " | qz: " << transform_stamped_map_to_odom_.transform.rotation.z << " | qw: " << transform_stamped_map_to_odom_.transform.rotation.w << " ]");
+		laserscan_to_pointcloud::tf_rosmsg_eigen_conversions::transformTF2ToMsg(transform, transform_stamped_.transform);
+		ROS_DEBUG_STREAM("Updating TF between " << transform_stamped_.header.frame_id << " and " << transform_stamped_.child_frame_id \
+				<< "\n\tTF translation -> [ x: " << transform_stamped_.transform.translation.x << " | y: " << transform_stamped_.transform.translation.y << " | z: " << transform_stamped_.transform.translation.z << " ]" \
+				<< "\n\tTF orientation -> [ qx: " << transform_stamped_.transform.rotation.x << " | qy: " << transform_stamped_.transform.rotation.y << " | qz: " << transform_stamped_.transform.rotation.z << " | qw: " << transform_stamped_.transform.rotation.w << " ]");
 		return true;
 	}
 
@@ -235,7 +322,7 @@ bool PoseToTFPublisher::updateTFMessage(tf2::Transform& transform) {
 
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <pose to tf functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-void PoseToTFPublisher::publishTFMapToOdomFromMapToOdomPose(double x, double y, double z, double roll, double pitch, double yaw) {
+void PoseToTFPublisher::publishTFFromMapToOdomPose(double x, double y, double z, double roll, double pitch, double yaw) {
 	tf2::Quaternion orientation;
 	orientation.setRPY(roll, pitch, yaw);
 
@@ -247,7 +334,7 @@ void PoseToTFPublisher::publishTFMapToOdomFromMapToOdomPose(double x, double y, 
 
 	if (updateTFMessage(transform_map_to_odom)) {
 		last_pose_time_ = ros::Time::now();
-		publishTFMapToOdom(false);
+		sendTF(false);
 
 		ROS_INFO_STREAM("Published global pose from map to odom estimate [ x: " << x << ", y: " << y << ", z: " << z
 				<< " | r: " << roll << ", p: " << pitch << ", y: " << yaw
@@ -256,7 +343,7 @@ void PoseToTFPublisher::publishTFMapToOdomFromMapToOdomPose(double x, double y, 
 }
 
 
-void PoseToTFPublisher::publishTFMapToOdomFromMapToBasePose(double x, double y, double z, double roll, double pitch, double yaw) {
+void PoseToTFPublisher::publishTFFromMapToBasePose(double x, double y, double z, double roll, double pitch, double yaw) {
 	tf2::Quaternion orientation;
 	orientation.setRPY(roll, pitch, yaw);
 	tf2::Transform transform(orientation, tf2::Vector3(x, y, z));
@@ -264,7 +351,7 @@ void PoseToTFPublisher::publishTFMapToOdomFromMapToBasePose(double x, double y, 
 	if (updateTFMessage(transform)) {
 		last_pose_time_ = ros::Time::now();
 
-		if (publishTFMapToOdom(transform, ros::Time::now(), ros::Duration(5)), false) {
+		if (publishTF(transform, ros::Time::now(), ros::Duration(5)), false) {
 			ROS_INFO_STREAM("Published global pose from map to base estimate [ x: " << x << ", y: " << y << ", z: " << z \
 					<< " | r: " << roll << ", p: " << pitch << ", y: " << yaw \
 					<< " | qx: " << orientation.x() << ", qy: " << orientation.y() << ", qz: " << orientation.z() << ", qw: " << orientation.w() << " ]");
@@ -273,7 +360,7 @@ void PoseToTFPublisher::publishTFMapToOdomFromMapToBasePose(double x, double y, 
 			ros::Duration wait_duration(0.005);
 
 			while (ros::Time::now() < end_time) {
-				if (publishTFMapToOdom(transform, ros::Time::now(), tf_lookup_timeout_, false)) {
+				if (publishTF(transform, ros::Time::now(), tf_lookup_timeout_, false)) {
 					ROS_INFO_STREAM("Published global pose from map to base estimate [ x: " << x << ", y: " << y << ", z: " << z \
 							<< " || r: " << roll << ", p: " << pitch << ", y: " << yaw \
 							<< " || qx: " << orientation.x() << ", qy: " << orientation.y() << ", qz: " << orientation.z() << ", qw: " << orientation.w() << " ]");
@@ -283,13 +370,13 @@ void PoseToTFPublisher::publishTFMapToOdomFromMapToBasePose(double x, double y, 
 			}
 
 			ROS_WARN_STREAM("Failed to find TF between " << odom_frame_id_ << " and " << base_link_frame_id_ << " when setting initial pose");
-			publishTFMapToOdomFromMapToOdomPose(x, y, z, roll, pitch, yaw);
+			publishTFFromMapToOdomPose(x, y, z, roll, pitch, yaw);
 		}
 	}
 }
 
 
-bool PoseToTFPublisher::publishTFMapToOdom(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, ros::Duration tf_timeout, bool check_pose_timeout) {
+bool PoseToTFPublisher::publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, ros::Duration tf_timeout, bool check_pose_timeout) {
 	tf2::Transform transform = transform_base_link_to_map;
 
 	if (!base_link_frame_id_.empty() && !odom_frame_id_.empty()) {
@@ -310,7 +397,7 @@ bool PoseToTFPublisher::publishTFMapToOdom(const tf2::Transform& transform_base_
 
 	if (updateTFMessage(transform)) {
 		last_pose_time_ = tf_time;
-		return publishTFMapToOdom(check_pose_timeout);
+		return sendTF(check_pose_timeout);
 	} else {
 		return false;
 	}
@@ -325,4 +412,3 @@ bool PoseToTFPublisher::publishTFMapToOdom(const tf2::Transform& transform_base_
 // =============================================================================   </private-section>  =========================================================================
 
 } /* namespace pose_to_tf_publisher */
-
