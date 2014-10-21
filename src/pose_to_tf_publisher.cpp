@@ -96,6 +96,8 @@ void PoseToTFPublisher::startPublishingTF() {
 		return;
 	}
 
+	ros::Time::waitForValid();
+
 	if (!poses_filename_.empty()) {
 		if (startPublishingTFFromFile(poses_filename_)) {
 			return;
@@ -118,8 +120,6 @@ bool PoseToTFPublisher::startPublishingTFFromFile(std::string poses_filename) {
 
 		if (getPoseFromFile(current_pose, current_pose_time, input_stream)) {
 			ROS_INFO_STREAM("Publishing tf [ " << transform_stamped_.header.frame_id << " -> " << transform_stamped_.child_frame_id << " ] from file " << poses_filename);
-
-			ros::Time::waitForValid();
 
 			publishTFFromPose(current_pose, map_frame_id_, ros::Time(current_pose_time));
 
@@ -187,11 +187,15 @@ void PoseToTFPublisher::startPublishingTFFromPoseTopics() {
 
 	ROS_INFO_STREAM("Publishing tf [ " << transform_stamped_.header.frame_id << " -> " << transform_stamped_.child_frame_id << " ] from pose topics [" << ss.str() << " ]");
 
-	ros::Rate publish_rate(publish_rate_);
-	while (ros::ok()) {
-		sendTF();
-		publish_rate.sleep();
-		ros::spinOnce();
+	if (publish_rate_ > 0) {
+		ros::Rate publish_rate(publish_rate_);
+		while (ros::ok()) {
+			sendTF();
+			publish_rate.sleep();
+			ros::spinOnce();
+		}
+	} else {
+		ros::spin();
 	}
 }
 
@@ -350,28 +354,21 @@ void PoseToTFPublisher::publishTFFromMapToBasePose(double x, double y, double z,
 
 	if (updateTFMessage(transform)) {
 		last_pose_time_ = ros::Time::now();
+		ros::Time end_time = ros::Time::now() + ros::Duration(10);
+		ros::Duration wait_duration(0.005);
 
-		if (publishTF(transform, ros::Time::now(), ros::Duration(5)), false) {
-			ROS_INFO_STREAM("Published global pose from map to base estimate [ x: " << x << ", y: " << y << ", z: " << z \
-					<< " | r: " << roll << ", p: " << pitch << ", y: " << yaw \
-					<< " | qx: " << orientation.x() << ", qy: " << orientation.y() << ", qz: " << orientation.z() << ", qw: " << orientation.w() << " ]");
-		} else {
-			ros::Time end_time = ros::Time::now() + ros::Duration(10);
-			ros::Duration wait_duration(0.005);
-
-			while (ros::Time::now() < end_time) {
-				if (publishTF(transform, ros::Time::now(), tf_lookup_timeout_, false)) {
-					ROS_INFO_STREAM("Published global pose from map to base estimate [ x: " << x << ", y: " << y << ", z: " << z \
-							<< " || r: " << roll << ", p: " << pitch << ", y: " << yaw \
-							<< " || qx: " << orientation.x() << ", qy: " << orientation.y() << ", qz: " << orientation.z() << ", qw: " << orientation.w() << " ]");
-					return;
-				}
-				wait_duration.sleep();
+		while (ros::Time::now() < end_time) {
+			if (publishTF(transform, ros::Time::now(), tf_lookup_timeout_, false)) {
+				ROS_INFO_STREAM("Published global pose from map to base estimate [ x: " << x << ", y: " << y << ", z: " << z \
+						<< " || r: " << roll << ", p: " << pitch << ", y: " << yaw \
+						<< " || qx: " << orientation.x() << ", qy: " << orientation.y() << ", qz: " << orientation.z() << ", qw: " << orientation.w() << " ]");
+				return;
 			}
-
-			ROS_WARN_STREAM("Failed to find TF between " << odom_frame_id_ << " and " << base_link_frame_id_ << " when setting initial pose");
-			publishTFFromMapToOdomPose(x, y, z, roll, pitch, yaw);
+			wait_duration.sleep();
 		}
+
+		ROS_WARN_STREAM("Failed to find TF between " << odom_frame_id_ << " and " << base_link_frame_id_ << " when setting initial pose");
+		publishTFFromMapToOdomPose(x, y, z, roll, pitch, yaw);
 	}
 }
 
