@@ -19,6 +19,9 @@
 
 // ROS includes
 #include <ros/ros.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Vector3.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -77,8 +80,8 @@ class PoseToTFPublisher {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </tf update functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <pose to tf functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-		void publishTFFromMapToOdomPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
-		void publishTFFromMapToBasePose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
+		void publishTFFromOdomToMapPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
+		void publishTFFromBaseToMapPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
 		bool publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time = ros::Time::now(), ros::Duration tf_timeout = ros::Duration(0.1), bool check_pose_timeout = true);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </pose to tf functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -117,6 +120,8 @@ class PoseToTFPublisher {
 		double publish_last_pose_tf_timeout_seconds_;
 		ros::Duration tf_lookup_timeout_;
 		ros::Time last_pose_time_;
+		ros::Time last_pose_arrival_time_;
+		bool last_pose_time_valid_;
 		bool invert_tf_transform_;
 		bool invert_tf_hierarchy_;
 		bool transform_pose_to_map_frame_id_;
