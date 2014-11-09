@@ -83,6 +83,7 @@ class PoseToTFPublisher {
 		void publishTFFromOdomToMapPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
 		void publishTFFromBaseToMapPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
 		bool publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time = ros::Time::now(), ros::Duration tf_timeout = ros::Duration(0.1), bool check_pose_timeout = true);
+		bool retrieveTFOdomToMap(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, tf2::Transform& transform_odom_to_map_out, ros::Duration tf_timeout = ros::Duration(0));
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </pose to tf functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
@@ -99,6 +100,7 @@ class PoseToTFPublisher {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline void setPublishRate(double publish_rate) { publish_rate_ = publish_rate; }
 		inline void setBaseLinkFrameId(const std::string& base_link_frame_id) { base_link_frame_id_ = base_link_frame_id; }
+		inline void setOdomFrameId(const std::string& odom_frame_id) { odom_frame_id_ = odom_frame_id; }
 		inline void setMapFrameId(const std::string& map_frame_id) { map_frame_id_ = map_frame_id; }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>  ===========================================================================

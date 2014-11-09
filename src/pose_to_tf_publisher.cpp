@@ -225,7 +225,7 @@ void PoseToTFPublisher::stopPublishingTFFromPoseTopics() {
 void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time) {
 	ros::Time pose_time_updated = pose_time;
 	if (pose_time.sec == 0 && pose_time.nsec == 0) { // time in the future to override any poses coming from the localization node
-		pose_time_updated = ros::Time::now() + ros::Duration(0.25);
+		pose_time_updated = ros::Time::now() + ros::Duration(1);
 		ROS_INFO("Reseting initial pose...");
 	}
 
@@ -391,16 +391,8 @@ void PoseToTFPublisher::publishTFFromBaseToMapPose(double x, double y, double z,
 bool PoseToTFPublisher::publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, ros::Duration tf_timeout, bool check_pose_timeout) {
 	tf2::Transform transform = transform_base_link_to_map;
 
-	if (!base_link_frame_id_.empty() && !odom_frame_id_.empty()) {
-		tf2::Transform transform_odom_to_base_link;
-		if (!tf_collector_.lookForTransform(transform_odom_to_base_link, base_link_frame_id_, odom_frame_id_, tf_time, tf_timeout)) {
-			ROS_WARN_STREAM("Dropping new pose with time [" << tf_time << "] because there isn't tf between [" << odom_frame_id_ << "] and [" << base_link_frame_id_ << "]");
-			return false;
-		}
-
-		// base_to_map = base_to_odom * odom_to_map
-		// odom_to_map = base_to_map * odom_to_base)
-		transform = transform_base_link_to_map * transform_odom_to_base_link;
+	if (!base_link_frame_id_.empty() && !odom_frame_id_.empty() && !retrieveTFOdomToMap(transform_base_link_to_map, tf_time, transform, tf_timeout)) {
+		ROS_WARN_STREAM("Dropping new pose with time [" << tf_time << "] because there isn't tf between [" << odom_frame_id_ << "] and [" << base_link_frame_id_ << "]");
 	}
 
 	if (invert_tf_transform_) {
@@ -415,6 +407,22 @@ bool PoseToTFPublisher::publishTF(const tf2::Transform& transform_base_link_to_m
 	} else {
 		return false;
 	}
+}
+
+
+bool PoseToTFPublisher::retrieveTFOdomToMap(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, tf2::Transform& transform_odom_to_map_out, ros::Duration tf_timeout) {
+	if (!base_link_frame_id_.empty() && !odom_frame_id_.empty()) {
+		tf2::Transform transform_odom_to_base_link;
+		if (tf_timeout.toSec() <= 0.01) { tf_timeout = tf_lookup_timeout_; }
+		if (tf_collector_.lookForTransform(transform_odom_to_base_link, base_link_frame_id_, odom_frame_id_, tf_time, tf_timeout)) {
+			// base_to_map = base_to_odom * odom_to_map
+			// odom_to_map = base_to_map * odom_to_base)
+			transform_odom_to_map_out = transform_base_link_to_map * transform_odom_to_base_link;
+			return true;
+		}
+	}
+
+	return false;
 }
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </pose to tf functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 // =============================================================================  </public-section>  ===========================================================================
