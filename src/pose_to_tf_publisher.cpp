@@ -225,7 +225,7 @@ void PoseToTFPublisher::stopPublishingTFFromPoseTopics() {
 void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time) {
 	ros::Time pose_time_updated = pose_time;
 	if (pose_time.sec == 0 && pose_time.nsec == 0) { // time in the future to override any poses coming from the localization node
-		pose_time_updated = ros::Time::now() + ros::Duration(1);
+		pose_time_updated = ros::Time::now() + ros::Duration(0.5);
 		ROS_INFO("Reseting initial pose...");
 	}
 
@@ -250,7 +250,7 @@ void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const
 		transform_pose *= transform_pose_to_map;
 	}
 
-	publishTF(transform_pose, pose_time, tf_lookup_timeout_, false);
+	publishTF(transform_pose, pose_time, tf_lookup_timeout_);
 	last_pose_time_ = pose_time_updated;
 }
 
@@ -393,6 +393,7 @@ bool PoseToTFPublisher::publishTF(const tf2::Transform& transform_base_link_to_m
 
 	if (!base_link_frame_id_.empty() && !odom_frame_id_.empty() && !retrieveTFOdomToMap(transform_base_link_to_map, tf_time, transform, tf_timeout)) {
 		ROS_WARN_STREAM("Dropping new pose with time [" << tf_time << "] because there isn't tf between [" << odom_frame_id_ << "] and [" << base_link_frame_id_ << "]");
+		return false;
 	}
 
 	if (invert_tf_transform_) {
