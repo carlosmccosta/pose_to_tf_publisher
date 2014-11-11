@@ -235,7 +235,7 @@ void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const
 	}
 
 	tf2::Transform transform_pose(
-			tf2::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w),
+			tf2::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w).normalize(),
 			tf2::Vector3(pose.position.x, pose.position.y, pose.position.z));
 
 	if (transform_pose_to_map_frame_id_ && frame_id != map_frame_id_) {
@@ -247,7 +247,7 @@ void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const
 			return;
 		}
 
-		transform_pose *= transform_pose_to_map;
+		transform_pose = transform_pose_to_map * transform_pose;
 	}
 
 	publishTF(transform_pose, pose_time, tf_lookup_timeout_);
@@ -321,11 +321,11 @@ bool PoseToTFPublisher::updateTFMessage(tf2::Transform& transform) {
 			return false;
 		}
 
-		transform.getRotation().normalize();
+		tf2::Quaternion transform_q = transform.getRotation().normalize();
 		laserscan_to_pointcloud::tf_rosmsg_eigen_conversions::transformTF2ToMsg(transform, transform_stamped_.transform);
 		ROS_DEBUG_STREAM("Updating TF between " << transform_stamped_.header.frame_id << " and " << transform_stamped_.child_frame_id \
-				<< "\n\tTF translation -> [ x: " << transform_stamped_.transform.translation.x << " | y: " << transform_stamped_.transform.translation.y << " | z: " << transform_stamped_.transform.translation.z << " ]" \
-				<< "\n\tTF orientation -> [ qx: " << transform_stamped_.transform.rotation.x << " | qy: " << transform_stamped_.transform.rotation.y << " | qz: " << transform_stamped_.transform.rotation.z << " | qw: " << transform_stamped_.transform.rotation.w << " ]");
+				<< "\tTF translation -> [ x: " << transform_stamped_.transform.translation.x << " | y: " << transform_stamped_.transform.translation.y << " | z: " << transform_stamped_.transform.translation.z << " ]" \
+				<< "\tTF orientation -> [ qx: " << transform_stamped_.transform.rotation.x << " | qy: " << transform_stamped_.transform.rotation.y << " | qz: " << transform_stamped_.transform.rotation.z << " | qw: " << transform_stamped_.transform.rotation.w << " ]");
 		return true;
 	}
 
