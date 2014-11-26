@@ -24,7 +24,7 @@
 	<arg name="parameters_namespace" default="pose_to_tf_publisher" />
 
 
-	<node pkg="pose_to_tf_publisher" type="pose_to_tf_publisher_node" name="pose_to_tf_publisher_node" ns="$(arg parameters_namespace)" output="screen" >
+	<node pkg="pose_to_tf_publisher" type="pose_to_tf_publisher_node" name="pose_to_tf_publisher_node" respawn="true" ns="$(arg parameters_namespace)" output="screen" >
 		<param name="publish_rate" type="double" value="$(arg publish_rate)" />
 		<param name="publish_last_pose_tf_timeout_seconds" type="double" value="$(arg publish_last_pose_tf_timeout_seconds)" /> <!-- if < 0 last pose received will be published forever with no timeout (until a new pose is received and updates the current publish pose) -->
 		<param name="tf_lookup_timeout" type="double" value="$(arg tf_lookup_timeout)" />
