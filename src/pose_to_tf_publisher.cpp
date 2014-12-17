@@ -226,7 +226,7 @@ void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const
 	ros::Time pose_time_updated = pose_time;
 	if (pose_time.sec == 0 && pose_time.nsec == 0) { // time in the future to override any poses coming from the localization node
 		pose_time_updated = ros::Time::now() + ros::Duration(0.5);
-		ROS_INFO("Reseting initial pose...");
+		ROS_INFO("Reseting tf initial pose...");
 	}
 
 	if (pose_time_updated < last_pose_time_ || frame_id.empty()) {
@@ -321,7 +321,6 @@ bool PoseToTFPublisher::updateTFMessage(tf2::Transform& transform) {
 			return false;
 		}
 
-		tf2::Quaternion transform_q = transform.getRotation().normalize();
 		laserscan_to_pointcloud::tf_rosmsg_eigen_conversions::transformTF2ToMsg(transform, transform_stamped_.transform);
 		ROS_DEBUG_STREAM("Updating TF between " << transform_stamped_.header.frame_id << " and " << transform_stamped_.child_frame_id \
 				<< "\tTF translation -> [ x: " << transform_stamped_.transform.translation.x << " | y: " << transform_stamped_.transform.translation.y << " | z: " << transform_stamped_.transform.translation.z << " ]" \
@@ -416,8 +415,6 @@ bool PoseToTFPublisher::retrieveTFOdomToMap(const tf2::Transform& transform_base
 		tf2::Transform transform_odom_to_base_link;
 		if (tf_timeout.toSec() <= 0.01) { tf_timeout = tf_lookup_timeout_; }
 		if (tf_collector_.lookForTransform(transform_odom_to_base_link, base_link_frame_id_, odom_frame_id_, tf_time, tf_timeout)) {
-			// base_to_map = base_to_odom * odom_to_map
-			// odom_to_map = base_to_map * odom_to_base)
 			transform_odom_to_map_out = transform_base_link_to_map * transform_odom_to_base_link;
 			return true;
 		}
