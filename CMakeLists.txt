@@ -12,6 +12,7 @@ set(${PROJECT_NAME}_CATKIN_COMPONENTS
     cmake_modules
     roscpp
     nav_msgs
+    std_msgs
     geometry_msgs
     tf2
     tf2_ros

@@ -20,6 +20,7 @@
 // ROS includes
 #include <ros/ros.h>
 #include <tf2/LinearMath/Transform.h>
+#include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -28,6 +29,9 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
+#include <std_msgs/Float64.h>
+#include <angles/angles.h>
+
 
 // external libs includes
 #include <boost/math/special_functions/fpclassify.hpp>
@@ -48,6 +52,11 @@ class PoseToTFPublisher {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </typedefs>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <enums>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		enum FloatUpdateField {
+			TranslationX, TranslationY, TranslationZ,
+			RotationRoll, RotationPitch, RotationYaw,
+			RotationQuaternionX, RotationQuaternionY, RotationQuaternionZ, RotationQuaternionW
+		};
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </enums>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constants>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -71,6 +80,7 @@ class PoseToTFPublisher {
 		void publishTFFromPoseStamped(const geometry_msgs::PoseStampedConstPtr& pose);
 		void publishTFFromPoseWithCovarianceStamped(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose);
 		void publishTFFromOdometry(const nav_msgs::OdometryConstPtr& odom);
+		void publishTFFromFloat(const std_msgs::Float64ConstPtr& float64);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </ros integration functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <tf update functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -115,6 +125,9 @@ class PoseToTFPublisher {
 		std::string pose_stamped_topic_;
 		std::string pose_with_covariance_stamped_topic_;
 		std::string odometry_topic_;
+		std::string float_topic_;
+		FloatUpdateField float_update_field_;
+		bool float_update_field_orientation_in_degrees_;
 
 		std::string poses_filename_;
 
@@ -144,6 +157,7 @@ class PoseToTFPublisher {
 		ros::Subscriber pose_stamped_subscriber_;
 		ros::Subscriber pose_with_covariance_stamped_subscriber_;
 		ros::Subscriber odometry_subscriber_;
+		ros::Subscriber float_subscriber_;
 		tf2_ros::TransformBroadcaster transform_broadcaster_;
 	// ========================================================================   </private-section>  ==========================================================================
 };

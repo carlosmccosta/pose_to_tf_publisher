@@ -48,6 +48,33 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	private_node_handle_->param("pose_stamped_topic", pose_stamped_topic_, std::string(""));
 	private_node_handle_->param("pose_with_covariance_stamped_topic", pose_with_covariance_stamped_topic_, std::string("/initialpose"));
 	private_node_handle_->param("odometry_topic", odometry_topic_, std::string(""));
+	private_node_handle_->param("float_topic", float_topic_, std::string(""));
+	private_node_handle_->param("float_update_field_orientation_in_degrees", float_update_field_orientation_in_degrees_, false);
+	std::string float_update_field;
+	private_node_handle_->param("float_update_field", float_update_field, std::string("RotationPitch"));
+
+	if (float_update_field == "TranslationX") {
+		float_update_field_ = TranslationX;
+	} else if (float_update_field == "TranslationY") {
+		float_update_field_ = TranslationY;
+	} else if (float_update_field == "TranslationZ") {
+		float_update_field_ = TranslationZ;
+	} else if (float_update_field == "RotationYaw") {
+		float_update_field_ = RotationYaw;
+	} else if (float_update_field == "RotationPitch") {
+		float_update_field_ = RotationPitch;
+	} else if (float_update_field == "RotationRoll") {
+		float_update_field_ = RotationRoll;
+	} else if (float_update_field == "RotationQuaternionX") {
+		float_update_field_ = RotationQuaternionX;
+	} else if (float_update_field == "RotationQuaternionY") {
+		float_update_field_ = RotationQuaternionY;
+	} else if (float_update_field == "RotationQuaternionZ") {
+		float_update_field_ = RotationQuaternionZ;
+	} else if (float_update_field == "RotationQuaternionW") {
+		float_update_field_ = RotationQuaternionW;
+	}
+
 	private_node_handle_->param("poses_filename", poses_filename_, std::string(""));
 
 	private_node_handle_->param("map_frame_id", map_frame_id_, std::string("map"));
@@ -192,6 +219,11 @@ void PoseToTFPublisher::startPublishingTFFromPoseTopics() {
 		odometry_subscriber_ = node_handle_->subscribe(odometry_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFFromOdometry, this);
 	}
 
+	if (!float_topic_.empty()) {
+		ss << " " << float_topic_;
+		float_subscriber_ = node_handle_->subscribe(float_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFFromFloat, this);
+	}
+
 	ROS_INFO_STREAM("Publishing tf [ " << transform_stamped_.header.frame_id << " -> " << transform_stamped_.child_frame_id << " ] from pose topics [" << ss.str() << " ]");
 
 	if (publish_rate_ > 0) {
@@ -218,6 +250,10 @@ void PoseToTFPublisher::stopPublishingTFFromPoseTopics() {
 
 	if (!odometry_topic_.empty()) {
 		odometry_subscriber_.shutdown();
+	}
+
+	if (!float_topic_.empty()) {
+		float_subscriber_.shutdown();
 	}
 }
 
@@ -267,6 +303,49 @@ void PoseToTFPublisher::publishTFFromPoseWithCovarianceStamped(const geometry_ms
 
 void PoseToTFPublisher::publishTFFromOdometry(const nav_msgs::OdometryConstPtr& odom) {
 	publishTFFromPose(odom->pose.pose, odom->header.frame_id, odom->header.stamp);
+}
+
+
+void PoseToTFPublisher::publishTFFromFloat(const std_msgs::Float64ConstPtr& float64) {
+	switch (float_update_field_) {
+		case TranslationX: { transform_stamped_.transform.translation.x = float64->data; break; }
+		case TranslationY: { transform_stamped_.transform.translation.y = float64->data; break; }
+		case TranslationZ: { transform_stamped_.transform.translation.z = float64->data; break; }
+		case RotationQuaternionX: { transform_stamped_.transform.rotation.x = float64->data; break; }
+		case RotationQuaternionY: { transform_stamped_.transform.rotation.y = float64->data; break; }
+		case RotationQuaternionZ: { transform_stamped_.transform.rotation.z = float64->data; break; }
+		case RotationQuaternionW: { transform_stamped_.transform.rotation.w = float64->data; break; }
+		default: { break; }
+	}
+
+
+	tf2::Quaternion new_orientation(transform_stamped_.transform.rotation.x, transform_stamped_.transform.rotation.y, transform_stamped_.transform.rotation.z, transform_stamped_.transform.rotation.w);
+	new_orientation.normalize();
+
+	if (float_update_field_ == RotationRoll || float_update_field_ == RotationPitch || float_update_field_ == RotationYaw) {
+		double float_in_radians = float_update_field_orientation_in_degrees_ ? angles::from_degrees(float64->data) : float64->data;
+		tf2::Matrix3x3 matrix(new_orientation);
+		double roll, pitch, yaw;
+		matrix.getRPY(roll, pitch, yaw);
+
+		if(float_update_field_ == RotationRoll) {
+			roll = float_in_radians;
+		} else if(float_update_field_ == RotationPitch) {
+			pitch = float_in_radians;
+		} else if(float_update_field_ == RotationYaw) {
+			yaw = float_in_radians;
+		}
+
+		new_orientation.setRPY(roll, pitch, yaw);
+		new_orientation.normalize();
+	}
+
+	transform_stamped_.transform.rotation.x = new_orientation.getX();
+	transform_stamped_.transform.rotation.y = new_orientation.getY();
+	transform_stamped_.transform.rotation.z = new_orientation.getZ();
+	transform_stamped_.transform.rotation.w = new_orientation.getW();
+
+	sendTF(true);
 }
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </ros integration functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 

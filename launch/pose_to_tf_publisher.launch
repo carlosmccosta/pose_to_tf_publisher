@@ -10,6 +10,9 @@
 	<arg name="pose_with_covariance_stamped_topic" default="/initialpose" />
 	<arg name="pose_stamped_topic" default="" />
 	<arg name="odometry_topic" default="" />
+	<arg name="float_topic" default="" />
+	<arg name="float_update_field_orientation_in_degrees" default="false" />
+	<arg name="float_update_field" default="" />
 	<arg name="poses_filename" default="" />
 	<arg name="map_frame_id" default="map" />
 	<arg name="odom_frame_id" default="odom" /> <!-- if empty, tfs will be published from [ map_frame_id -> base_link_frame_id ] directly (instead of [ map_frame_id -> odom_frame_id ]) -->
@@ -31,6 +34,9 @@
 		<param name="pose_with_covariance_stamped_topic" type="str" value="$(arg pose_with_covariance_stamped_topic)" />
 		<param name="pose_stamped_topic" type="str" value="$(arg pose_stamped_topic)" />
 		<param name="odometry_topic" type="str" value="$(arg odometry_topic)" />
+		<param name="float_topic" type="str" value="$(arg float_topic)" />
+		<param name="float_update_field_orientation_in_degrees" type="bool" value="$(arg float_update_field_orientation_in_degrees)" />
+		<param name="float_update_field" type="str" value="$(arg float_update_field)" />
 		<param name="poses_filename" type="str" value="$(arg poses_filename)" />
 		<param name="map_frame_id" type="str" value="$(arg map_frame_id)" />
 		<param name="odom_frame_id" type="str" value="$(arg odom_frame_id)" />
