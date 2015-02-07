@@ -19,6 +19,7 @@ namespace pose_to_tf_publisher {
 PoseToTFPublisher::PoseToTFPublisher() :
 		publish_rate_(100),
 		publish_last_pose_tf_timeout_seconds_(-1.0),
+		tf_time_offset_(0.0),
 		last_pose_time_(0),
 		last_pose_arrival_time_(0),
 		last_pose_time_valid_(false),
@@ -41,6 +42,9 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 
 	private_node_handle_->param("publish_rate", publish_rate_, 100.0);
 	private_node_handle_->param("publish_last_pose_tf_timeout_seconds", publish_last_pose_tf_timeout_seconds_, -1.0);
+	double tf_time_offset = 0.0;
+	private_node_handle_->param("tf_time_offset", tf_time_offset, 0.0);
+	tf_time_offset_ = ros::Duration(tf_time_offset);
 	double tf_lookup_timeout;
 	private_node_handle_->param("tf_lookup_timeout", tf_lookup_timeout, 0.5);
 	tf_lookup_timeout_.fromSec(tf_lookup_timeout);
@@ -229,6 +233,7 @@ void PoseToTFPublisher::startPublishingTFFromPoseTopics() {
 	if (publish_rate_ > 0) {
 		ros::Rate publish_rate(publish_rate_);
 		while (ros::ok()) {
+			transform_stamped_.header.stamp = ros::Time::now();
 			sendTF();
 			publish_rate.sleep();
 			ros::spinOnce();
@@ -345,6 +350,7 @@ void PoseToTFPublisher::publishTFFromFloat(const std_msgs::Float64ConstPtr& floa
 	transform_stamped_.transform.rotation.z = new_orientation.getZ();
 	transform_stamped_.transform.rotation.w = new_orientation.getW();
 
+	transform_stamped_.header.stamp = ros::Time::now();
 	sendTF(true);
 }
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </ros integration functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -372,7 +378,7 @@ bool PoseToTFPublisher::sendTF(bool check_pose_timeout) {
 	ros::Time current_time = ros::Time::now();
 	if (!check_pose_timeout || publish_last_pose_tf_timeout_seconds_ <= 0.0 || (current_time - last_pose_arrival_time_).toSec() <= publish_last_pose_tf_timeout_seconds_ || last_pose_arrival_time_.toSec() < 1.0) {
 		transform_stamped_.header.seq = number_tfs_published_++;
-		transform_stamped_.header.stamp = current_time;
+//		transform_stamped_.header.stamp = current_time;
 		transform_broadcaster_.sendTransform(transform_stamped_);
 		return true;
 	}
@@ -429,6 +435,7 @@ void PoseToTFPublisher::publishTFFromOdomToMapPose(double x, double y, double z,
 		last_pose_time_ = ros::Time::now();
 		last_pose_arrival_time_ = ros::Time::now();
 		last_pose_time_valid_ = true;
+		transform_stamped_.header.stamp = ros::Time::now();
 		sendTF(false);
 
 		ROS_INFO_STREAM("Published global pose from map to odom estimate [ x: " << x << " | y: " << y << " | z: " << z
@@ -482,6 +489,7 @@ bool PoseToTFPublisher::publishTF(const tf2::Transform& transform_base_link_to_m
 		last_pose_time_ = tf_time;
 		last_pose_arrival_time_ = ros::Time::now();
 		last_pose_time_valid_ = true;
+		transform_stamped_.header.stamp = tf_time + tf_time_offset_;
 		return sendTF(check_pose_timeout);
 	} else {
 		return false;

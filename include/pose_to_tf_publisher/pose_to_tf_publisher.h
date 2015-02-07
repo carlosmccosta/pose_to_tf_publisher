@@ -133,6 +133,7 @@ class PoseToTFPublisher {
 
 		double publish_rate_;
 		double publish_last_pose_tf_timeout_seconds_;
+		ros::Duration tf_time_offset_;
 		ros::Duration tf_lookup_timeout_;
 		ros::Time last_pose_time_;
 		ros::Time last_pose_arrival_time_;
