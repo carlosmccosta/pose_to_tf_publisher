@@ -52,6 +52,7 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	private_node_handle_->param("pose_stamped_topic", pose_stamped_topic_, std::string(""));
 	private_node_handle_->param("pose_with_covariance_stamped_topic", pose_with_covariance_stamped_topic_, std::string("/initialpose"));
 	private_node_handle_->param("odometry_topic", odometry_topic_, std::string(""));
+	private_node_handle_->param("tf_topic", tf_topic_, std::string("/tf"));
 	private_node_handle_->param("float_topic", float_topic_, std::string(""));
 	private_node_handle_->param("float_update_field_orientation_in_degrees", float_update_field_orientation_in_degrees_, false);
 	std::string float_update_field;
@@ -84,6 +85,8 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	private_node_handle_->param("map_frame_id", map_frame_id_, std::string("map"));
 	private_node_handle_->param("odom_frame_id", odom_frame_id_, std::string("odom"));
 	private_node_handle_->param("base_link_frame_id", base_link_frame_id_, std::string("base_link"));
+	private_node_handle_->param("transform_tf_message_source", transform_tf_message_source_, std::string(""));
+	private_node_handle_->param("transform_tf_message_target", transform_tf_message_target_, std::string(""));
 
 	private_node_handle_->param("invert_tf_transform", invert_tf_transform_, false);
 	private_node_handle_->param("invert_tf_hierarchy", invert_tf_hierarchy_, false);
@@ -214,8 +217,7 @@ void PoseToTFPublisher::startPublishingTFFromPoseTopics() {
 
 	if (!pose_with_covariance_stamped_topic_.empty()) {
 		ss << " " << pose_with_covariance_stamped_topic_;
-		pose_with_covariance_stamped_subscriber_ = node_handle_->subscribe(pose_with_covariance_stamped_topic_, 5,
-				&pose_to_tf_publisher::PoseToTFPublisher::publishTFFromPoseWithCovarianceStamped, this);
+		pose_with_covariance_stamped_subscriber_ = node_handle_->subscribe(pose_with_covariance_stamped_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFFromPoseWithCovarianceStamped, this);
 	}
 
 	if (!odometry_topic_.empty()) {
@@ -226,6 +228,11 @@ void PoseToTFPublisher::startPublishingTFFromPoseTopics() {
 	if (!float_topic_.empty()) {
 		ss << " " << float_topic_;
 		float_subscriber_ = node_handle_->subscribe(float_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFFromFloat, this);
+	}
+
+	if (!tf_topic_.empty() && !transform_tf_message_source_.empty() && !transform_tf_message_target_.empty()) {
+		ss << " " << tf_topic_;
+		tf_subscriber_ = node_handle_->subscribe(tf_topic_, 5, &pose_to_tf_publisher::PoseToTFPublisher::publishTFFromTF, this);
 	}
 
 	ROS_INFO_STREAM("Publishing tf [ " << transform_stamped_.header.frame_id << " -> " << transform_stamped_.child_frame_id << " ] from pose topics [" << ss.str() << " ]");
@@ -311,6 +318,34 @@ void PoseToTFPublisher::publishTFFromOdometry(const nav_msgs::OdometryConstPtr& 
 }
 
 
+void PoseToTFPublisher::publishTFFromTF(const tf2_msgs::TFMessageConstPtr tf_message) {
+	for (size_t i = 0; i < tf_message->transforms.size(); ++i) {
+		if (tf_message->transforms[i].child_frame_id == transform_tf_message_source_ && tf_message->transforms[i].header.frame_id == transform_tf_message_target_) {
+			if (!odom_frame_id_.empty() || invert_tf_transform_) {
+				tf2::Transform transform;
+				laserscan_to_pointcloud::tf_rosmsg_eigen_conversions::transformMsgToTF2(tf_message->transforms[i].transform, transform);
+				publishTF(transform, tf_message->transforms[i].header.stamp, tf_lookup_timeout_, false);
+			} else {
+				last_pose_time_ = tf_message->transforms[i].header.stamp;
+				last_pose_arrival_time_ = ros::Time::now();
+				last_pose_time_valid_ = true;
+				transform_stamped_.header.stamp = tf_message->transforms[i].header.stamp + tf_time_offset_;
+				transform_stamped_.transform.translation.x = tf_message->transforms[i].transform.translation.x;
+				transform_stamped_.transform.translation.y = tf_message->transforms[i].transform.translation.y;
+				transform_stamped_.transform.translation.z = tf_message->transforms[i].transform.translation.z;
+				transform_stamped_.transform.rotation.x = tf_message->transforms[i].transform.rotation.x;
+				transform_stamped_.transform.rotation.y = tf_message->transforms[i].transform.rotation.y;
+				transform_stamped_.transform.rotation.z = tf_message->transforms[i].transform.rotation.z;
+				transform_stamped_.transform.rotation.w = tf_message->transforms[i].transform.rotation.w;
+				sendTF(false);
+			}
+
+			return;
+		}
+	}
+}
+
+
 void PoseToTFPublisher::publishTFFromFloat(const std_msgs::Float64ConstPtr& float64) {
 	switch (float_update_field_) {
 		case TranslationX: { transform_stamped_.transform.translation.x = float64->data; break; }
@@ -391,6 +426,7 @@ bool PoseToTFPublisher::sendTF(bool check_pose_timeout) {
 			<< "\n\tLast pose arrival time: " << last_pose_arrival_time_);
 	return false;
 }
+
 
 bool PoseToTFPublisher::updateTFMessage(tf2::Transform& transform) {
 	if (boost::math::isfinite(transform.getOrigin().getX()) &&

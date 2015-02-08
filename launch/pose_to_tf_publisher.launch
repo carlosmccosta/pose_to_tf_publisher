@@ -10,6 +10,7 @@
 	<arg name="pose_with_covariance_stamped_topic" default="/initialpose" />
 	<arg name="pose_stamped_topic" default="" />
 	<arg name="odometry_topic" default="" />
+	<arg name="tf_topic" default="/tf" />
 	<arg name="float_topic" default="" />
 	<arg name="float_update_field_orientation_in_degrees" default="false" />
 	<arg name="float_update_field" default="" />
@@ -17,6 +18,11 @@
 	<arg name="map_frame_id" default="map" />
 	<arg name="odom_frame_id" default="odom" /> <!-- if empty, tfs will be published from [ map_frame_id -> base_link_frame_id ] directly (instead of [ map_frame_id -> odom_frame_id ]) -->
 	<arg name="base_link_frame_id" default="base_footprint" />
+	
+	<!-- The next two frames allow to grab transforms from /tf topic and republish then (in [ map_frame_id -> base_link_frame_id ]) with a given time offset (useful to syncronize ground truth time stamps) -->
+	<arg name="transform_tf_message_source" default="" />
+	<arg name="transform_tf_message_target" default="" />
+	
 	<arg name="publish_rate" default="30.0" />
 	<arg name="publish_initial_pose" default="true" />
 	<arg name="publish_last_pose_tf_timeout_seconds" default="-1.0" />
@@ -43,6 +49,8 @@
 		<param name="map_frame_id" type="str" value="$(arg map_frame_id)" />
 		<param name="odom_frame_id" type="str" value="$(arg odom_frame_id)" />
 		<param name="base_link_frame_id" type="str" value="$(arg base_link_frame_id)" />
+		<param name="transform_tf_message_source" type="str" value="$(arg transform_tf_message_source)" />
+		<param name="transform_tf_message_target" type="str" value="$(arg transform_tf_message_target)" />
 		<param name="invert_tf_transform" type="bool" value="$(arg invert_tf_transform)" />
 		<param name="invert_tf_hierarchy" type="bool" value="$(arg invert_tf_hierarchy)" />
 		<param name="transform_pose_to_map_frame_id" type="bool" value="$(arg transform_pose_to_map_frame_id)" />

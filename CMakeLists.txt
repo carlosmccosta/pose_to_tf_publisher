@@ -14,6 +14,7 @@ set(${PROJECT_NAME}_CATKIN_COMPONENTS
     nav_msgs
     std_msgs
     geometry_msgs
+    tf2_msgs
     tf2
     tf2_ros
     rosconsole

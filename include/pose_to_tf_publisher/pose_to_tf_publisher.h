@@ -24,6 +24,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Vector3.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <tf2_msgs/TFMessage.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
@@ -80,6 +81,7 @@ class PoseToTFPublisher {
 		void publishTFFromPoseStamped(const geometry_msgs::PoseStampedConstPtr& pose);
 		void publishTFFromPoseWithCovarianceStamped(const geometry_msgs::PoseWithCovarianceStampedConstPtr& pose);
 		void publishTFFromOdometry(const nav_msgs::OdometryConstPtr& odom);
+		void publishTFFromTF(const tf2_msgs::TFMessageConstPtr tf_message);
 		void publishTFFromFloat(const std_msgs::Float64ConstPtr& float64);
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </ros integration functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -125,6 +127,7 @@ class PoseToTFPublisher {
 		std::string pose_stamped_topic_;
 		std::string pose_with_covariance_stamped_topic_;
 		std::string odometry_topic_;
+		std::string tf_topic_;
 		std::string float_topic_;
 		FloatUpdateField float_update_field_;
 		bool float_update_field_orientation_in_degrees_;
@@ -146,6 +149,8 @@ class PoseToTFPublisher {
 		std::string map_frame_id_;
 		std::string odom_frame_id_;
 		std::string base_link_frame_id_;
+		std::string transform_tf_message_source_;
+		std::string transform_tf_message_target_;
 
 		// state fields
 		laserscan_to_pointcloud::TFCollector tf_collector_;
@@ -159,6 +164,7 @@ class PoseToTFPublisher {
 		ros::Subscriber pose_with_covariance_stamped_subscriber_;
 		ros::Subscriber odometry_subscriber_;
 		ros::Subscriber float_subscriber_;
+		ros::Subscriber tf_subscriber_;
 		tf2_ros::TransformBroadcaster transform_broadcaster_;
 	// ========================================================================   </private-section>  ==========================================================================
 };
