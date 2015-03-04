@@ -272,7 +272,7 @@ void PoseToTFPublisher::stopPublishingTFFromPoseTopics() {
 
 void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time) {
 	ros::Time pose_time_updated = pose_time;
-	if (pose_time.sec == 0 && pose_time.nsec == 0) { // time in the future to override any poses coming from the localization node
+	if (pose_time.sec == 0 && pose_time.nsec == 0 || pose_time.toSec() < 3.0) { // time in the future to override any poses coming from the localization node
 		pose_time_updated = ros::Time::now() + ros::Duration(0.5);
 		ROS_INFO("Reseting tf initial pose...");
 	}
@@ -443,7 +443,7 @@ bool PoseToTFPublisher::updateTFMessage(tf2::Transform& transform) {
 		}
 
 		laserscan_to_pointcloud::tf_rosmsg_eigen_conversions::transformTF2ToMsg(transform, transform_stamped_.transform);
-		ROS_DEBUG_STREAM("Updating TF between " << transform_stamped_.header.frame_id << " and " << transform_stamped_.child_frame_id \
+		ROS_DEBUG_STREAM("Updating TF between " << transform_stamped_.header.frame_id << " and " << transform_stamped_.child_frame_id << " with time [" << transform_stamped_.header.stamp << "]" \
 				<< "\tTF translation -> [ x: " << transform_stamped_.transform.translation.x << " | y: " << transform_stamped_.transform.translation.y << " | z: " << transform_stamped_.transform.translation.z << " ]" \
 				<< "\tTF orientation -> [ qx: " << transform_stamped_.transform.rotation.x << " | qy: " << transform_stamped_.transform.rotation.y << " | qz: " << transform_stamped_.transform.rotation.z << " | qw: " << transform_stamped_.transform.rotation.w << " ]");
 		return true;
