@@ -272,7 +272,7 @@ void PoseToTFPublisher::stopPublishingTFFromPoseTopics() {
 
 void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const std::string& frame_id, const ros::Time& pose_time) {
 	ros::Time pose_time_updated = pose_time;
-	if (pose_time.sec == 0 && pose_time.nsec == 0 || pose_time.toSec() < 3.0) { // time in the future to override any poses coming from the localization node
+	if (pose_time.sec == 0 && pose_time.nsec == 0) { // time in the future to override any poses coming from the localization node
 		pose_time_updated = ros::Time::now() + ros::Duration(0.5);
 		ROS_INFO("Reseting tf initial pose...");
 	}
