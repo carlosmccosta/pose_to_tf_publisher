@@ -17,6 +17,8 @@ namespace pose_to_tf_publisher {
 // =============================================================================  <public-section>  ============================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 PoseToTFPublisher::PoseToTFPublisher() :
+		float_update_field_(RotationYaw),
+		float_update_field_orientation_in_degrees_(0.0f),
 		publish_rate_(100),
 		publish_last_pose_tf_timeout_seconds_(-1.0),
 		tf_time_offset_(0.0),
