@@ -16,7 +16,7 @@ namespace pose_to_tf_publisher {
 
 // =============================================================================  <public-section>  ============================================================================
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <constructors-destructor>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-PoseToTFPublisher::PoseToTFPublisher() :
+PoseToTFPublisher::PoseToTFPublisher(ros::Duration tf_buffer_duration) :
 		float_update_field_(RotationYaw),
 		float_update_field_orientation_in_degrees_(0.0f),
 		publish_rate_(100),
@@ -28,7 +28,7 @@ PoseToTFPublisher::PoseToTFPublisher() :
 		invert_tf_transform_(false),
 		invert_tf_hierarchy_(false),
 		transform_pose_to_map_frame_id_(true),
-		tf_collector_(ros::Duration(600.0)),
+		tf_collector_(tf_buffer_duration),
 		number_tfs_published_(0) {
 }
 
