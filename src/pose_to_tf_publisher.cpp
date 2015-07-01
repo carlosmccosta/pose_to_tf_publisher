@@ -292,7 +292,7 @@ void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const
 		// transform to map (global frame reference)
 		ROS_WARN_STREAM("Pose received in " << frame_id << " frame instead of " << map_frame_id_);
 		tf2::Transform transform_pose_to_map;
-		if (!tf_collector_.lookForTransform(transform_pose_to_map, map_frame_id_, frame_id, pose_time, tf_lookup_timeout_)) {
+		if (!tf_collector_.lookForTransform(transform_pose_to_map, map_frame_id_, frame_id, pose_time_updated, tf_lookup_timeout_)) {
 			ROS_WARN_STREAM("Dropping new pose with time [" << pose_time_updated << "] because there isn't tf between [" << map_frame_id_ << "] and [" << frame_id << "]");
 			return;
 		}
@@ -300,7 +300,7 @@ void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const
 		transform_pose = transform_pose_to_map * transform_pose;
 	}
 
-	publishTF(transform_pose, pose_time, tf_lookup_timeout_);
+	publishTF(transform_pose, pose_time_updated, pose_time_updated, tf_lookup_timeout_);
 	last_pose_time_ = pose_time_updated;
 }
 
@@ -326,7 +326,7 @@ void PoseToTFPublisher::publishTFFromTF(const tf2_msgs::TFMessageConstPtr tf_mes
 			if (!odom_frame_id_.empty() || invert_tf_transform_) {
 				tf2::Transform transform;
 				laserscan_to_pointcloud::tf_rosmsg_eigen_conversions::transformMsgToTF2(tf_message->transforms[i].transform, transform);
-				publishTF(transform, tf_message->transforms[i].header.stamp, tf_lookup_timeout_, false);
+				publishTF(transform, tf_message->transforms[i].header.stamp, tf_message->transforms[i].header.stamp, tf_lookup_timeout_, false);
 			} else {
 				last_pose_time_ = tf_message->transforms[i].header.stamp;
 				last_pose_arrival_time_ = ros::Time::now();
@@ -496,7 +496,7 @@ void PoseToTFPublisher::publishTFFromBaseToMapPose(double x, double y, double z,
 		ros::Duration wait_duration(0.005);
 
 		while (ros::Time::now() < end_time) {
-			if (publishTF(transform, ros::Time::now(), tf_lookup_timeout_, false)) {
+			if (publishTF(transform, ros::Time::now(), ros::Time(0.0), tf_lookup_timeout_, false)) {
 				ROS_INFO_STREAM("Published global pose from map to base estimate [ x: " << x << " | y: " << y << " | z: " << z \
 						<< " || r: " << roll << " | p: " << pitch << " | y: " << yaw \
 						<< " || qx: " << orientation.x() << " | qy: " << orientation.y() << " | qz: " << orientation.z() << " | qw: " << orientation.w() << " ]");
@@ -511,10 +511,10 @@ void PoseToTFPublisher::publishTFFromBaseToMapPose(double x, double y, double z,
 }
 
 
-bool PoseToTFPublisher::publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, ros::Duration tf_timeout, bool check_pose_timeout) {
+bool PoseToTFPublisher::publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, ros::Time tf_odom_time, ros::Duration tf_timeout, bool check_pose_timeout) {
 	tf2::Transform transform = transform_base_link_to_map;
 
-	if (!base_link_frame_id_.empty() && !odom_frame_id_.empty() && !retrieveTFOdomToMap(transform_base_link_to_map, tf_time, transform, tf_timeout)) {
+	if (!base_link_frame_id_.empty() && !odom_frame_id_.empty() && !retrieveTFOdomToMap(transform_base_link_to_map, tf_odom_time, transform, tf_timeout)) {
 		ROS_WARN_STREAM("Dropping new pose with time [" << tf_time << "] because there isn't tf between [" << odom_frame_id_ << "] and [" << base_link_frame_id_ << "]");
 		return false;
 	}

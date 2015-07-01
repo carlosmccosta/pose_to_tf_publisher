@@ -97,7 +97,7 @@ class PoseToTFPublisher {
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <pose to tf functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		void publishTFFromOdomToMapPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
 		void publishTFFromBaseToMapPose(double x, double y, double z = 0, double roll = 0, double pitch = 0, double yaw = 0);
-		bool publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time = ros::Time::now(), ros::Duration tf_timeout = ros::Duration(0.1), bool check_pose_timeout = true);
+		bool publishTF(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time = ros::Time::now(), ros::Time tf_odom_time = ros::Time::now(), ros::Duration tf_timeout = ros::Duration(0.1), bool check_pose_timeout = true);
 		bool retrieveTFOdomToMap(const tf2::Transform& transform_base_link_to_map, ros::Time tf_time, tf2::Transform& transform_odom_to_map_out, ros::Duration tf_timeout = ros::Duration(0));
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </pose to tf functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
