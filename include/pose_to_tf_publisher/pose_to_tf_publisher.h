@@ -127,6 +127,7 @@ class PoseToTFPublisher {
 	// ========================================================================   <private-section>   ==========================================================================
 	private:
 		// configuration fields
+		std::string configuration_namespace_;
 		std::string pose_stamped_topic_;
 		std::string pose_with_covariance_stamped_topic_;
 		std::string odometry_topic_;

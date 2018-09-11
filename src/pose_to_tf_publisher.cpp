@@ -41,24 +41,25 @@ PoseToTFPublisher::~PoseToTFPublisher() {}
 void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr& node_handle, ros::NodeHandlePtr& private_node_handle, std::string configuration_namespace) {
 	node_handle_ = node_handle;
 	private_node_handle_ = private_node_handle;
+	configuration_namespace_ = configuration_namespace;
 
-	private_node_handle_->param("publish_rate", publish_rate_, 100.0);
-	private_node_handle_->param("publish_last_pose_tf_timeout_seconds", publish_last_pose_tf_timeout_seconds_, -1.0);
+	private_node_handle_->param(configuration_namespace_ + "publish_rate", publish_rate_, 100.0);
+	private_node_handle_->param(configuration_namespace_ + "publish_last_pose_tf_timeout_seconds", publish_last_pose_tf_timeout_seconds_, -1.0);
 	double tf_time_offset = 0.0;
-	private_node_handle_->param("tf_time_offset", tf_time_offset, 0.0);
+	private_node_handle_->param(configuration_namespace_ + "tf_time_offset", tf_time_offset, 0.0);
 	tf_time_offset_ = ros::Duration(tf_time_offset);
 	double tf_lookup_timeout;
-	private_node_handle_->param("tf_lookup_timeout", tf_lookup_timeout, 0.5);
+	private_node_handle_->param(configuration_namespace_ + "tf_lookup_timeout", tf_lookup_timeout, 0.5);
 	tf_lookup_timeout_.fromSec(tf_lookup_timeout);
 
-	private_node_handle_->param("pose_stamped_topic", pose_stamped_topic_, std::string(""));
-	private_node_handle_->param("pose_with_covariance_stamped_topic", pose_with_covariance_stamped_topic_, std::string("/initialpose"));
-	private_node_handle_->param("odometry_topic", odometry_topic_, std::string(""));
-	private_node_handle_->param("tf_topic", tf_topic_, std::string("/tf"));
-	private_node_handle_->param("float_topic", float_topic_, std::string(""));
-	private_node_handle_->param("float_update_field_orientation_in_degrees", float_update_field_orientation_in_degrees_, false);
+	private_node_handle_->param(configuration_namespace_ + "pose_stamped_topic", pose_stamped_topic_, std::string(""));
+	private_node_handle_->param(configuration_namespace_ + "pose_with_covariance_stamped_topic", pose_with_covariance_stamped_topic_, std::string("/initialpose"));
+	private_node_handle_->param(configuration_namespace_ + "odometry_topic", odometry_topic_, std::string(""));
+	private_node_handle_->param(configuration_namespace_ + "tf_topic", tf_topic_, std::string("/tf"));
+	private_node_handle_->param(configuration_namespace_ + "float_topic", float_topic_, std::string(""));
+	private_node_handle_->param(configuration_namespace_ + "float_update_field_orientation_in_degrees", float_update_field_orientation_in_degrees_, false);
 	std::string float_update_field;
-	private_node_handle_->param("float_update_field", float_update_field, std::string("RotationPitch"));
+	private_node_handle_->param(configuration_namespace_ + "float_update_field", float_update_field, std::string("RotationPitch"));
 
 	if (float_update_field == "TranslationX") {
 		float_update_field_ = TranslationX;
@@ -82,17 +83,17 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 		float_update_field_ = RotationQuaternionW;
 	}
 
-	private_node_handle_->param("poses_filename", poses_filename_, std::string(""));
+	private_node_handle_->param(configuration_namespace_ + "poses_filename", poses_filename_, std::string(""));
 
-	private_node_handle_->param("map_frame_id", map_frame_id_, std::string("map"));
-	private_node_handle_->param("odom_frame_id", odom_frame_id_, std::string("odom"));
-	private_node_handle_->param("base_link_frame_id", base_link_frame_id_, std::string("base_link"));
-	private_node_handle_->param("transform_tf_message_source", transform_tf_message_source_, std::string(""));
-	private_node_handle_->param("transform_tf_message_target", transform_tf_message_target_, std::string(""));
+	private_node_handle_->param(configuration_namespace_ + "map_frame_id", map_frame_id_, std::string("map"));
+	private_node_handle_->param(configuration_namespace_ + "odom_frame_id", odom_frame_id_, std::string("odom"));
+	private_node_handle_->param(configuration_namespace_ + "base_link_frame_id", base_link_frame_id_, std::string("base_link"));
+	private_node_handle_->param(configuration_namespace_ + "transform_tf_message_source", transform_tf_message_source_, std::string(""));
+	private_node_handle_->param(configuration_namespace_ + "transform_tf_message_target", transform_tf_message_target_, std::string(""));
 
-	private_node_handle_->param("invert_tf_transform", invert_tf_transform_, false);
-	private_node_handle_->param("invert_tf_hierarchy", invert_tf_hierarchy_, false);
-	private_node_handle_->param("transform_pose_to_map_frame_id", transform_pose_to_map_frame_id_, true);
+	private_node_handle_->param(configuration_namespace_ + "invert_tf_transform", invert_tf_transform_, false);
+	private_node_handle_->param(configuration_namespace_ + "invert_tf_hierarchy", invert_tf_hierarchy_, false);
+	private_node_handle_->param(configuration_namespace_ + "transform_pose_to_map_frame_id", transform_pose_to_map_frame_id_, true);
 
 	std::string child_frame = (odom_frame_id_.empty() ? base_link_frame_id_ : odom_frame_id_);
 
@@ -113,16 +114,16 @@ void PoseToTFPublisher::publishInitialPoseFromParameterServer() {
 	double x, y, z, roll, pitch, yaw;
 	bool initial_pose_in_base_to_map;
 	bool publish_initial_pose;
-	private_node_handle_->param("publish_initial_pose", publish_initial_pose, true);
+	private_node_handle_->param(configuration_namespace_ + "publish_initial_pose", publish_initial_pose, true);
 
 	if (publish_initial_pose) {
-		private_node_handle_->param("initial_pose_in_base_to_map", initial_pose_in_base_to_map, true);
-		private_node_handle_->param("initial_x", x, 0.0);
-		private_node_handle_->param("initial_y", y, 0.0);
-		private_node_handle_->param("initial_z", z, 0.0);
-		private_node_handle_->param("initial_roll", roll, 0.0);
-		private_node_handle_->param("initial_pitch", pitch, 0.0);
-		private_node_handle_->param("initial_yaw", yaw, 0.0);
+		private_node_handle_->param(configuration_namespace_ + "initial_pose_in_base_to_map", initial_pose_in_base_to_map, true);
+		private_node_handle_->param(configuration_namespace_ + "initial_x", x, 0.0);
+		private_node_handle_->param(configuration_namespace_ + "initial_y", y, 0.0);
+		private_node_handle_->param(configuration_namespace_ + "initial_z", z, 0.0);
+		private_node_handle_->param(configuration_namespace_ + "initial_roll", roll, 0.0);
+		private_node_handle_->param(configuration_namespace_ + "initial_pitch", pitch, 0.0);
+		private_node_handle_->param(configuration_namespace_ + "initial_yaw", yaw, 0.0);
 
 		if (initial_pose_in_base_to_map) {
 			publishTFFromBaseToMapPose(x, y, z, roll, pitch, yaw);
