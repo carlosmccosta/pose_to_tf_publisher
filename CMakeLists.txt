@@ -9,30 +9,31 @@ project(pose_to_tf_publisher)
 
 
 set(${PROJECT_NAME}_CATKIN_COMPONENTS
-    cmake_modules
-    roscpp
-    nav_msgs
-    std_msgs
-    geometry_msgs
-    tf2_msgs
-    tf2
-    tf2_ros
-    rosconsole
     angles
+    geometry_msgs
     laserscan_to_pointcloud
+    nav_msgs
+    rosconsole
+    roscpp
+    std_msgs
+    tf2
+    tf2_msgs
+    tf2_ros
 )
 
 find_package(catkin REQUIRED COMPONENTS ${${PROJECT_NAME}_CATKIN_COMPONENTS})
 find_package(Boost REQUIRED)
-
+find_package(Eigen3 REQUIRED)
 
 
 catkin_package(
-    INCLUDE_DIRS include
+    INCLUDE_DIRS
+        include
     LIBRARIES
         pose_to_tf_publisher
     DEPENDS
         Boost
+        EIGEN3
 )
 
 
@@ -48,6 +49,7 @@ catkin_package(
 include_directories(
     include
     ${Boost_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIR}
     ${catkin_INCLUDE_DIRS}
 )
 
@@ -70,6 +72,18 @@ add_executable(pose_to_tf_publisher_node
     src/pose_to_tf_publisher_node.cpp
 )
 
+
+#==================
+# dependencies
+#==================
+
+add_dependencies(pose_to_tf_publisher
+    ${catkin_EXPORTED_TARGETS}
+)
+
+add_dependencies(pose_to_tf_publisher_node
+    ${catkin_EXPORTED_TARGETS}
+)
 
 
 #==================

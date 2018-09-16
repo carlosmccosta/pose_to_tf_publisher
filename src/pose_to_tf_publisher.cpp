@@ -193,7 +193,6 @@ bool PoseToTFPublisher::getPoseFromFile(geometry_msgs::Pose& pose_out, double& t
 	std::string line;
 	while (std::getline(input_stream, line)) {
 		std::stringstream ss(line);
-		double time;
 		if ((ss >> timestamp_out) &&
 			(ss >> pose_out.position.x) &&
 			(ss >> pose_out.position.y) &&
