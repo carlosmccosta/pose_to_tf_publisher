@@ -95,10 +95,7 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	private_node_handle_->param(configuration_namespace_ + "invert_tf_hierarchy", invert_tf_hierarchy_, false);
 	private_node_handle_->param(configuration_namespace_ + "transform_pose_to_map_frame_id", transform_pose_to_map_frame_id_, true);
 
-	std::string child_frame = (odom_frame_id_.empty() ? base_link_frame_id_ : odom_frame_id_);
-
-	transform_stamped_.header.frame_id = invert_tf_hierarchy_ ? child_frame : map_frame_id_;
-	transform_stamped_.child_frame_id = invert_tf_hierarchy_ ? map_frame_id_ : child_frame;
+	updateTFMessageFrames();
 	transform_stamped_.transform.translation.x = 0.0;
 	transform_stamped_.transform.translation.y = 0.0;
 	transform_stamped_.transform.translation.z = 0.0;
@@ -453,6 +450,12 @@ bool PoseToTFPublisher::updateTFMessage(tf2::Transform& transform) {
 
 	ROS_WARN("Dropped pose with NaN numbers!");
 	return false;
+}
+
+void PoseToTFPublisher::updateTFMessageFrames() {
+    std::string child_frame = (odom_frame_id_.empty() ? base_link_frame_id_ : odom_frame_id_);
+    transform_stamped_.header.frame_id = invert_tf_hierarchy_ ? child_frame : map_frame_id_;
+    transform_stamped_.child_frame_id = invert_tf_hierarchy_ ? map_frame_id_ : child_frame;
 }
 
 

@@ -92,6 +92,7 @@ class PoseToTFPublisher {
 		bool addOdometryDisplacementToTransform(tf2::Transform& transform, const ros::Time& time_of_transform, const ros::Time& target_time);
 		bool sendTF(bool check_pose_timeout = true);
 		bool updateTFMessage(tf2::Transform& transform);
+		void updateTFMessageFrames();
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </tf update functions>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <pose to tf functions>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -114,9 +115,9 @@ class PoseToTFPublisher {
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   <sets>   <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 		inline void setPublishRate(double publish_rate) { publish_rate_ = publish_rate; }
-		inline void setBaseLinkFrameId(const std::string& base_link_frame_id) { base_link_frame_id_ = base_link_frame_id; }
-		inline void setOdomFrameId(const std::string& odom_frame_id) { odom_frame_id_ = odom_frame_id; }
-		inline void setMapFrameId(const std::string& map_frame_id) { map_frame_id_ = map_frame_id; }
+		inline void setBaseLinkFrameId(const std::string& base_link_frame_id) { base_link_frame_id_ = base_link_frame_id; updateTFMessageFrames(); }
+		inline void setOdomFrameId(const std::string& odom_frame_id) { odom_frame_id_ = odom_frame_id; updateTFMessageFrames(); }
+		inline void setMapFrameId(const std::string& map_frame_id) { map_frame_id_ = map_frame_id; updateTFMessageFrames(); }
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>   </sets>  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	// ========================================================================   </public-section>  ===========================================================================
 
