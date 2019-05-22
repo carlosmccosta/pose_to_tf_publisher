@@ -140,6 +140,7 @@ class PoseToTFPublisher {
 		std::string poses_filename_;
 
 		double publish_rate_;
+		bool update_transform_timestamp_when_republishing_tf_;
 		double publish_last_pose_tf_timeout_seconds_;
 		ros::Duration tf_time_offset_;
 		ros::Duration tf_lookup_timeout_;

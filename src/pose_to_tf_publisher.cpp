@@ -20,6 +20,7 @@ PoseToTFPublisher::PoseToTFPublisher(ros::Duration tf_buffer_duration) :
 		float_update_field_(RotationYaw),
 		float_update_field_orientation_in_degrees_(0.0f),
 		publish_rate_(100),
+		update_transform_timestamp_when_republishing_tf_(true),
 		publish_last_pose_tf_timeout_seconds_(-1.0),
 		tf_time_offset_(0.0),
 		last_pose_time_(0),
@@ -44,6 +45,7 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	configuration_namespace_ = configuration_namespace;
 
 	private_node_handle_->param(configuration_namespace_ + "publish_rate", publish_rate_, 100.0);
+	private_node_handle_->param(configuration_namespace_ + "update_transform_timestamp_when_republishing_tf", update_transform_timestamp_when_republishing_tf_, true);
 	private_node_handle_->param(configuration_namespace_ + "publish_last_pose_tf_timeout_seconds", publish_last_pose_tf_timeout_seconds_, -1.0);
 	double tf_time_offset = 0.0;
 	private_node_handle_->param(configuration_namespace_ + "tf_time_offset", tf_time_offset, 0.0);
@@ -239,7 +241,7 @@ void PoseToTFPublisher::startPublishingTFFromPoseTopics() {
 	if (publish_rate_ > 0) {
 		ros::Rate publish_rate(publish_rate_);
 		while (ros::ok()) {
-			transform_stamped_.header.stamp = ros::Time::now();
+			if (update_transform_timestamp_when_republishing_tf_) transform_stamped_.header.stamp = ros::Time::now();
 			sendTF();
 			publish_rate.sleep();
 			ros::spinOnce();
