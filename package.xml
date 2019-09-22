@@ -9,6 +9,8 @@
 
 	<buildtool_depend>catkin</buildtool_depend>
 	<depend>angles</depend>
+	<depend>boost</depend>
+	<depend>eigen</depend>
 	<depend>geometry_msgs</depend>
 	<depend>laserscan_to_pointcloud</depend> 	<!-- https://github.com/carlosmccosta/laserscan_to_pointcloud -->
 	<depend>nav_msgs</depend>
@@ -18,6 +20,4 @@
 	<depend>tf2</depend>
 	<depend>tf2_msgs</depend>
 	<depend>tf2_ros</depend>
-	<depend>libboost-all-dev</depend>
-	<depend>libeigen3-dev</depend>
 </package>
