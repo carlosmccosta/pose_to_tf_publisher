@@ -31,6 +31,7 @@
 	<arg name="invert_tf_transform" default="false" />
 	<arg name="invert_tf_hierarchy" default="false" />
 	<arg name="transform_pose_to_map_frame_id" default="true" />
+	<arg name="discard_older_poses" default="true" />
 	<arg name="parameters_namespace" default="pose_to_tf_publisher" />
 	<arg name="nodes_respawn" default="true" />
 	<arg name="node_name" default="$(anon pose_to_tf_publisher_node)" />
@@ -56,6 +57,7 @@
 		<param name="invert_tf_transform" type="bool" value="$(arg invert_tf_transform)" />
 		<param name="invert_tf_hierarchy" type="bool" value="$(arg invert_tf_hierarchy)" />
 		<param name="transform_pose_to_map_frame_id" type="bool" value="$(arg transform_pose_to_map_frame_id)" />
+		<param name="discard_older_poses" type="bool" value="$(arg discard_older_poses)" />
 		<param name="publish_initial_pose" type="bool" value="$(arg publish_initial_pose)" />
 		<param name="initial_pose_in_base_to_map" type="bool" value="$(arg initial_pose_in_base_to_map)" />
 		<param name="initial_x" type="double" value="$(arg initial_x)" />

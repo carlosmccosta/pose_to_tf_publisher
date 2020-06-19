@@ -150,6 +150,7 @@ class PoseToTFPublisher {
 		bool invert_tf_transform_;
 		bool invert_tf_hierarchy_;
 		bool transform_pose_to_map_frame_id_;
+		bool discard_older_poses_;
 
 		// frame reference ids
 		std::string map_frame_id_;

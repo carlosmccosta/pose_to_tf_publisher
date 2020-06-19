@@ -96,6 +96,7 @@ void PoseToTFPublisher::setupConfigurationFromParameterServer(ros::NodeHandlePtr
 	private_node_handle_->param(configuration_namespace_ + "invert_tf_transform", invert_tf_transform_, false);
 	private_node_handle_->param(configuration_namespace_ + "invert_tf_hierarchy", invert_tf_hierarchy_, false);
 	private_node_handle_->param(configuration_namespace_ + "transform_pose_to_map_frame_id", transform_pose_to_map_frame_id_, true);
+	private_node_handle_->param(configuration_namespace_ + "discard_older_poses", discard_older_poses_, true);
 
 	updateTFMessageFrames();
 	transform_stamped_.transform.translation.x = 0.0;
@@ -278,7 +279,7 @@ void PoseToTFPublisher::publishTFFromPose(const geometry_msgs::Pose& pose, const
 		ROS_INFO("Reseting tf initial pose...");
 	}
 
-	if (pose_time_updated < last_pose_time_ || frame_id.empty()) {
+	if ((discard_older_poses_ && pose_time_updated < last_pose_time_) || frame_id.empty()) {
 		ROS_WARN_STREAM("Dropping new pose with time [" << pose_time_updated << "] and frame_id [" << frame_id << "]");
 		return;
 	}
